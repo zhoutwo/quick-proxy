@@ -35,23 +35,15 @@ const proxy = http.createServer((req, res) => {
     body = Buffer.concat(body);
     let reqData = [];
     const cookie = getStringFromArray(headers['set-cookie']) || undefined;
-    const stored = false;//cache.getCache(url, cookie);
-    if (stored) {
+    const stored = cache.getCachedHeaderAndBody(url, cookie);
+    if (stored.header) {
       console.dir(`[${new Date()}]: Using cache for request url ${url} and cookie ${cookie}`);
-      res.end(stored);
+      res.writeHead(stored.statusCode || 200, stored.statusMessage, stored.headers);
+      res.end(stored.body);
     } else {
       let responseContent = [];
       const realUrl = urlModule.parse(url || `http://${headers.host}`);
-      console.log(`Sending request to ${url || `http://${headers.host}`}`);
-      console.log({
-        protocol: realUrl.protocol,
-        hostname: realUrl.hostname,
-        path: realUrl.path,
-        port: realUrl.port,
-        host: realUrl.host,
-        method,
-        headers
-      });
+      console.log(`[${new Date()}]: Sending request to ${url || `http://${headers.host}`}`);
       const realReq = http.request({
         protocol: realUrl.protocol,
         hostname: realUrl.hostname,
@@ -61,41 +53,38 @@ const proxy = http.createServer((req, res) => {
         method,
         headers
       }).on('response', (serverRes, socket, head) => {
-        console.log('response');
         res.writeHead(serverRes.statusCode, serverRes.statusMessage, serverRes.headers);
+        const serverCookie = getStringFromArray(serverRes.headers['set-cookie']) || undefined;
+        let cookieAge = serverRes.headers['expires'] ? (serverRes.headers['expires'] - new Date()) : serverRes.headers['maxAge'] ? serverRes.headers['maxAge'] + serverRes.headers['date'] - new Date() : undefined;
+        cache.putCacheHeader(url, {
+          statusCode: serverRes.statusCode,
+          statusMessage: serverRes.statusMessage,
+          headers: serverRes.headers
+        }, serverCookie, cookieAge);
         if (!serverRes.headers["content-length"]) {
-          console.log('no data');
           res.end();
           return;
         }
         serverRes.on('data', (chunk) => {
-          console.log('data');
           responseContent.push(chunk);
         }).on('end', (chunk) => {
           if (chunk) {
             responseContent.push(chunk);
           }
-          console.log('end');
           responseContent = Buffer.concat(responseContent);
-          const serverCookie = getStringFromArray(serverRes.headers['set-cookie']) || undefined;
-          const cookieAge = serverRes.headers['expires'] ? (serverRes.headers['expires'] - new Date()) : serverRes.headers['maxAge'] ? serverRes.headers['maxAge'] + serverRes.headers['date'] - new Date() : undefined;
-          cache.putCache(url, responseContent, serverCookie, cookieAge);
+          cookieAge = serverRes.headers['expires'] ? (serverRes.headers['expires'] - new Date()) : serverRes.headers['maxAge'] ? serverRes.headers['maxAge'] + serverRes.headers['date'] - new Date() : undefined;
+          cache.putCacheBody(url, responseContent, serverCookie, cookieAge);
           res.end(responseContent);
         }).on('error', (err) => {
-          console.log('server response');
-          console.dir(err);
+          console.error(err);
           throw err;
         });
       }).on('error', (err) => {
-        console.log('server');
-        console.dir(err);
         throw err;
       });
       realReq.end(body);
     }
   }).on('error', (err) => {
-    console.log('client');
-    console.dir(err);
     throw err;
   });
 });
