@@ -1,0 +1,19 @@
+{
+  "name": "quick-proxy",
+  "version": "1.0.0",
+  "description": "A simple HTTP 1.1 proxy server implementation, without HTTPS support",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zhoutwo/quick-proxy.git"
+  },
+  "author": "Zhou Zhou",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/zhoutwo/quick-proxy/issues"
+  },
+  "homepage": "https://github.com/zhoutwo/quick-proxy#readme"
+}
