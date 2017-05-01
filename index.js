@@ -15,6 +15,7 @@ function getStringFromArray(arr) {
 }
 
 const proxy = http.createServer((req, res) => {
+  res.useChunkedEncodingByDefault = false;
   console.log(`[${new Date()}]: Request for ${req.url}`);
   let body = [];
   const {
@@ -52,7 +53,9 @@ const proxy = http.createServer((req, res) => {
         host: realUrl.host,
         method,
         headers
-      }).on('response', (serverRes, socket, head) => {
+      })
+      realReq.useChunkedEncodingByDefault = false;
+      realReq.on('response', (serverRes, socket, head) => {
         res.writeHead(serverRes.statusCode, serverRes.statusMessage, serverRes.headers);
         const serverCookie = getStringFromArray(serverRes.headers['set-cookie']) || undefined;
         let cookieAge = serverRes.headers['expires'] ? (serverRes.headers['expires'] - new Date()) : serverRes.headers['maxAge'] ? serverRes.headers['maxAge'] + serverRes.headers['date'] - new Date() : undefined;
